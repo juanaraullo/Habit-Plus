@@ -274,14 +274,25 @@ main { flex:1; max-width:1060px; margin:0 auto; padding:calc(22px + env(safe-are
 .badge-name { font-size:12px; font-weight:700; }
 .badge-desc { font-size:10.5px; color:var(--text-3); }
 
-/* ---------- Toast ---------- */
+/* ---------- Toast (Dynamic Island style) ---------- */
 .toast {
-  position:fixed; top:calc(16px + env(safe-area-inset-top)); left:50%; transform:translate(-50%,-80px); z-index:200;
-  background:var(--card-solid); border:1px solid var(--card-border); box-shadow:var(--shadow);
-  padding:13px 22px; border-radius:100px; font-size:14.5px; font-weight:700;
-  transition:transform .45s var(--ease-spring); display:flex; align-items:center; gap:8px; white-space:nowrap;
+  position:fixed; top:calc(12px + env(safe-area-inset-top)); left:50%; z-index:200;
+  background:rgba(16,16,20,.94); color:#fff;
+  backdrop-filter:blur(20px) saturate(1.4); -webkit-backdrop-filter:blur(20px) saturate(1.4);
+  padding:13px 24px; border-radius:100px; font-size:14.5px; font-weight:700; letter-spacing:-.2px;
+  display:block; max-width:min(92vw, 440px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  box-shadow:0 12px 36px rgba(0,0,0,.4), inset 0 0 0 .5px rgba(255,255,255,.12);
+  transform:translate(-50%,-90px) scale(.6);
+  animation:islandPop 3.4s var(--ease-out) forwards;
+  cursor:pointer;
 }
-.toast.show { transform:translate(-50%,0); }
+@keyframes islandPop {
+  0%   { transform:translate(-50%,-90px) scale(.6); opacity:0; }
+  7%   { transform:translate(-50%,0) scale(1.03); opacity:1; }
+  10%  { transform:translate(-50%,0) scale(1); }
+  85%  { transform:translate(-50%,0) scale(1); opacity:1; }
+  100% { transform:translate(-50%,-90px) scale(.6); opacity:0; }
+}
 
 /* ---------- Misc ---------- */
 .empty { text-align:center; padding:52px 20px; color:var(--text-2); }
@@ -311,12 +322,11 @@ main { flex:1; max-width:1060px; margin:0 auto; padding:calc(22px + env(safe-are
 @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
 @keyframes pop { 0%{transform:scale(.5)} 70%{transform:scale(1.15)} 100%{transform:scale(1)} }
 @keyframes flicker { 0%,100%{transform:scale(1) rotate(-2deg)} 50%{transform:scale(1.12) rotate(2deg)} }
-@media (prefers-reduced-motion:reduce){ *,*::before,*::after{ animation-duration:.01ms !important; transition-duration:.01ms !important; } }
+@media (prefers-reduced-motion:reduce){ *,*::before,*::after{ animation-duration:.01ms !important; transition-duration:.01ms !important; } .toast{ animation-duration:3.4s !important; animation-timing-function:linear !important; } }
 </style>
 </head>
 <body>
 <canvas id="confetti-canvas"></canvas>
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <div class="app">
   <!-- Sidebar (desktop) -->
@@ -400,6 +410,7 @@ const defaultState = () => ({
   completions: {},      // { habitId: { "YYYY-MM-DD": value } }
   goals: [],            // {id,name,emoji,color,deadline,target,progress,milestones:[{text,done}],notes,completedAt}
   customCats: [],       // user-created categories
+  overrides: {},        // per-date schedule tweaks: { "YYYY-MM-DD": { habitId: "skip"|"add" } }
   unlocked: [],         // achievement ids
   focusSessions: [],    // {date, mode, seconds}
   settings: { theme:"auto", accent:"#0a84ff", sound:true, confetti:true, name:"" },
@@ -441,6 +452,7 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7
 // ---------- Dates ----------
 const DAY = 864e5;
 const dkey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const fromKey = k => { const [y,m,d] = k.split("-").map(Number); return new Date(y, m-1, d); };
 const today = () => dkey(new Date());
 const addDays = (d,n) => new Date(d.getFullYear(), d.getMonth(), d.getDate()+n);
 const WEEKDAYS = ["S","M","T","W","T","F","S"];
@@ -450,6 +462,9 @@ function isDue(h, date){
   const created = new Date(h.createdAt); created.setHours(0,0,0,0);
   const d0 = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   if (d0 < created) return false;
+  // Per-day plan overrides from the calendar win over the base schedule
+  const ov = S.overrides && S.overrides[dkey(d0)];
+  if (ov && ov[h.id]) return ov[h.id] === "add";
   const f = h.freq || { type:"daily" };
   if (f.type === "daily") return true;
   if (f.type === "weekdays") return (f.days||[]).includes(date.getDay());
@@ -617,10 +632,15 @@ function playSound(type){
     // ...a bright rising cheer (G5 → D6)...
     tone(ctx, 784, t + .03, .28, .07);
     tone(ctx, 1174.7, t + .13, .38, .06);
-    // ...and glittery sparkles raining down
+    // ...glittery sparkles raining down...
     for (let i = 0; i < 9; i++){
       const st = t + .06 + Math.random() * .38;
       tone(ctx, 1700 + Math.random() * 2400, st, .10 + Math.random() * .14, .03);
+    }
+    // ...and a soft round of applause underneath
+    for (let i = 0; i < 14; i++){
+      const st = t + .10 + i * .052 + Math.random() * .05;
+      noiseBurst(ctx, st, .04 + Math.random() * .025, 1400 + Math.random() * 1300, .05 + Math.random() * .035);
     }
   }
   else if (type === "achieve"){ [523.25,659.25,783.99,1046.5].forEach((f,i)=>tone(ctx, f, t + i*.1, .45, .08)); }
@@ -631,12 +651,12 @@ const cctx = confettiCanvas.getContext("2d");
 let particles = [], confettiRunning = false;
 function sizeCanvas(){ confettiCanvas.width = innerWidth * devicePixelRatio; confettiCanvas.height = innerHeight * devicePixelRatio; cctx.scale(devicePixelRatio, devicePixelRatio); }
 addEventListener("resize", sizeCanvas); sizeCanvas();
-function burst(x = innerWidth/2, y = innerHeight/2.6){
+function burst(x = innerWidth/2, y = innerHeight/2.6, n = 120){
   if (!S.settings.confetti) return;
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  for (let i=0;i<70;i++){
-    const a = Math.random()*Math.PI*2, sp = 4+Math.random()*8;
-    particles.push({ x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-4, s:4+Math.random()*5, c:COLORS[Math.floor(Math.random()*COLORS.length)], r:Math.random()*Math.PI, vr:(Math.random()-.5)*.3, life:1 });
+  for (let i=0;i<n;i++){
+    const a = Math.random()*Math.PI*2, sp = 4+Math.random()*10;
+    particles.push({ x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-5, s:4+Math.random()*6, c:COLORS[Math.floor(Math.random()*COLORS.length)], r:Math.random()*Math.PI, vr:(Math.random()-.5)*.35, life:1, round:Math.random()<.35 });
   }
   if (!confettiRunning){ confettiRunning = true; requestAnimationFrame(tickConfetti); }
 }
@@ -644,21 +664,30 @@ function tickConfetti(){
   cctx.clearRect(0,0,innerWidth,innerHeight);
   particles = particles.filter(p=>p.life>0);
   for (const p of particles){
-    p.x+=p.vx; p.y+=p.vy; p.vy+=.28; p.vx*=.985; p.r+=p.vr; p.life-=.012;
+    p.x+=p.vx; p.y+=p.vy; p.vy+=.26; p.vx*=.986; p.r+=p.vr; p.life-=.011;
     cctx.save(); cctx.translate(p.x,p.y); cctx.rotate(p.r); cctx.globalAlpha=Math.max(0,p.life);
-    cctx.fillStyle=p.c; cctx.fillRect(-p.s/2,-p.s/2,p.s,p.s*.6); cctx.restore();
+    cctx.fillStyle=p.c;
+    if (p.round){ cctx.beginPath(); cctx.arc(0,0,p.s*.42,0,Math.PI*2); cctx.fill(); }
+    else cctx.fillRect(-p.s/2,-p.s/2,p.s,p.s*.6);
+    cctx.restore();
   }
   if (particles.length) requestAnimationFrame(tickConfetti);
   else { confettiRunning=false; cctx.clearRect(0,0,innerWidth,innerHeight); }
 }
 
 // ---------- Toast ----------
-let toastTimer;
+// A fresh element per toast, dismissed by the CSS animation itself (no JS
+// timers — iOS pauses those during scroll, which left toasts stuck on screen)
 function toast(msg){
-  const el = document.getElementById("toast");
-  el.textContent = msg; el.classList.add("show");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>el.classList.remove("show"), 2600);
+  document.querySelectorAll(".toast").forEach(t=>t.remove());
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.setAttribute("role","status");
+  el.setAttribute("aria-live","polite");
+  el.textContent = msg;
+  el.addEventListener("animationend", ()=>el.remove());
+  el.addEventListener("click", ()=>el.remove());
+  document.body.appendChild(el);
 }
 
 // ---------- Theme ----------
@@ -758,16 +787,32 @@ function saveName(){
   toast(`Nice to meet you, ${v}! 💙`);
   playSound("check");
 }
+// ---------- First-open welcome ----------
+function showWelcome(){
+  document.getElementById("modal").innerHTML = `
+  <div style="text-align:center;padding:8px 4px">
+    <div style="font-size:52px;margin-bottom:10px">👋</div>
+    <div style="font-size:24px;font-weight:800;letter-spacing:-.5px;margin-bottom:8px">Welcome to Momentum</div>
+    <div class="sub" style="margin-bottom:22px">What should I call you?<br>I'll cheer you on by name.</div>
+    <input type="text" id="welcome-name" placeholder="Your name" maxlength="30" autocomplete="given-name"
+      style="width:100%;padding:14px 16px;border-radius:14px;background:var(--input-bg);border:1.5px solid var(--accent);outline:none;font-size:17px;text-align:center;margin-bottom:14px"
+      onkeydown="if(event.key==='Enter')saveWelcomeName()">
+    <button class="btn btn-primary btn-block" style="margin-bottom:10px" onclick="saveWelcomeName()">Let's build momentum 🚀</button>
+    <button class="btn btn-ghost btn-block" onclick="S.settings.askedName=true;save();closeModal()">Skip for now</button>
+  </div>`;
+  openModal();
+}
+function saveWelcomeName(){
+  const v = (document.getElementById("welcome-name")?.value || "").trim();
+  S.settings.askedName = true;
+  if (v) S.settings.name = v;
+  save(); closeModal(); render();
+  if (v){ toast(`Welcome, ${v}! 💙`); playSound("check"); }
+}
 function viewToday(){
   const now = new Date();
   const due = S.habits.filter(h=>isDue(h,now));
-  const done = due.filter(h=>isDone(h,today()));
-  const pct = due.length ? done.length/due.length : 0;
-  const streak = overallStreak();
-  const week = completionRate(7);
   const q = QUOTES[Math.floor((+new Date(now.getFullYear(),now.getMonth(),now.getDate())/DAY)) % QUOTES.length];
-
-  const circ = 2*Math.PI*56;
   return `
   <div class="spread" style="margin-bottom:22px">
     <div>
@@ -779,32 +824,6 @@ function viewToday(){
   <div class="section-title" style="margin-top:2px">Today's Habits</div>
   ${due.length ? `<div class="grid">${due.map((h,i)=>habitRow(h,i)).join("")}</div>` :
     `<div class="card empty"><div class="big">🌤</div><div style="font-weight:700;font-size:17px;margin-bottom:6px">Nothing due today</div><div class="sub">Tap + to create your first habit</div></div>`}
-
-  <div class="section-title">Your Progress</div>
-  <div class="card lift" style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
-    <div class="ring-wrap">
-      <svg width="132" height="132" viewBox="0 0 132 132">
-        <circle class="ring-bg" cx="66" cy="66" r="56" stroke-width="11"/>
-        <circle class="ring-fg" cx="66" cy="66" r="56" stroke-width="11" stroke="url(#rg)"
-          stroke-dasharray="${circ}" stroke-dashoffset="${circ*(1-pct)}"/>
-        <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="var(--accent)"/><stop offset="100%" stop-color="#bf5af2"/>
-        </linearGradient></defs>
-      </svg>
-      <div class="ring-center">
-        <div style="font-size:27px;font-weight:800;letter-spacing:-1px">${Math.round(pct*100)}%</div>
-        <div style="font-size:11px;color:var(--text-2);font-weight:600">${done.length}/${due.length} done</div>
-      </div>
-    </div>
-    <div style="flex:1;min-width:180px">
-      <div class="grid grid-2">
-        <div><div class="sub">Current streak</div><div class="big-num"><span class="streak-flame">🔥</span> ${streak}<span style="font-size:14px;color:var(--text-2);font-weight:600"> days</span></div></div>
-        <div><div class="sub">This week</div><div class="big-num">${week}%</div></div>
-        <div><div class="sub">Habits</div><div class="big-num">${S.habits.length}</div></div>
-        <div><div class="sub">Goals active</div><div class="big-num">${S.goals.filter(g=>!g.completedAt).length}</div></div>
-      </div>
-    </div>
-  </div>
 
   ${!S.settings.name ? `
   <div class="card" style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
@@ -825,9 +844,6 @@ function viewToday(){
   </div>`}
 
   ${otherHabitsToday()}
-
-  <div class="section-title">This Week</div>
-  <div class="card">${weekStrip()}</div>
 
   <div class="section-title">Quote of the Day</div>
   <div class="card" style="border-left:4px solid var(--accent)">
@@ -914,7 +930,11 @@ function toggleHabit(id, ev){
     if (navigator.vibrate) navigator.vibrate(12);
     const due = S.habits.filter(x=>isDue(x,new Date()));
     const allDone = due.length && due.every(x=>isDone(x,key));
-    if (ev) burst(ev.clientX||innerWidth/2, ev.clientY||innerHeight/3);
+    if (ev){
+      burst(ev.clientX||innerWidth/2, ev.clientY||innerHeight/3);
+      setTimeout(()=>burst(innerWidth*.12, innerHeight*.55, 55), 140);
+      setTimeout(()=>burst(innerWidth*.88, innerHeight*.55, 55), 260);
+    }
     if (allDone) setTimeout(()=>{ toast(`🎉 Perfect day${S.settings.name?", "+S.settings.name:""}! All habits complete`); burst(); }, 350);
     else if (Math.random() < 0.35) toast(cheer(Math.floor(Math.random()*CHEERS.length)));
     checkAchievements();
@@ -1105,7 +1125,7 @@ function toggleFreqDay(i){
 function saveHabit(){
   hform.name = (document.getElementById("f-name")?.value || hform.name || "").trim();
   if (!hform.name){ toast("Give your habit a name"); return; }
-  delete hform._addingCat;
+  delete hform._addingCat; delete hform._customEmoji;
   if (hform.id){
     const i = S.habits.findIndex(x=>x.id===hform.id);
     S.habits[i] = hform;
@@ -1131,7 +1151,47 @@ function viewStats(){
   const cur = h ? habitStreak(h) : overallStreak();
   const best = h ? longestStreak(h) : Math.max(0,...S.habits.map(longestStreak),0);
   const consistency = Math.round((rate30*0.6 + rate7*0.4));
+  const now = new Date();
+  const dueT = S.habits.filter(x=>isDue(x,now));
+  const doneT = dueT.filter(x=>isDone(x,today()));
+  const pct = dueT.length ? doneT.length/dueT.length : 0;
+  const circ = 2*Math.PI*56;
+  const streakAll = overallStreak();
   return `<div class="h1" style="margin-bottom:18px">Statistics</div>
+
+  <div class="section-title" style="margin-top:0">Your Progress</div>
+  <div class="card lift" style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+    <div class="ring-wrap">
+      <svg width="132" height="132" viewBox="0 0 132 132">
+        <circle class="ring-bg" cx="66" cy="66" r="56" stroke-width="11"/>
+        <circle class="ring-fg" cx="66" cy="66" r="56" stroke-width="11" stroke="url(#rg)"
+          stroke-dasharray="${circ}" stroke-dashoffset="${circ*(1-pct)}"/>
+        <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="var(--accent)"/><stop offset="100%" stop-color="#bf5af2"/>
+        </linearGradient></defs>
+      </svg>
+      <div class="ring-center">
+        <div style="font-size:27px;font-weight:800;letter-spacing:-1px">${Math.round(pct*100)}%</div>
+        <div style="font-size:11px;color:var(--text-2);font-weight:600">${doneT.length}/${dueT.length} done</div>
+      </div>
+    </div>
+    <div style="flex:1;min-width:180px">
+      <div class="grid grid-2">
+        <div><div class="sub">Current streak</div><div class="big-num"><span class="streak-flame">🔥</span> ${streakAll}<span style="font-size:14px;color:var(--text-2);font-weight:600"> days</span></div></div>
+        <div><div class="sub">This week</div><div class="big-num">${completionRate(7)}%</div></div>
+        <div><div class="sub">Habits</div><div class="big-num">${S.habits.length}</div></div>
+        <div><div class="sub">Goals active</div><div class="big-num">${S.goals.filter(g=>!g.completedAt).length}</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">This Week</div>
+  <div class="card">${weekStrip()}</div>
+
+  <div class="section-title">Calendar</div>
+  <div class="card">${calendarSection()}</div>
+
+  <div class="section-title">Habit Analytics</div>
   <div class="field">
     <select onchange="statsHabit=this.value;render()" style="width:100%;padding:13px 15px;border-radius:14px;background:var(--input-bg);border:1.5px solid transparent;outline:none" aria-label="Choose habit">
       ${opts.map(([v,l])=>`<option value="${v}" ${statsHabit===v?"selected":""}>${esc(l)}</option>`).join("")}
@@ -1213,6 +1273,99 @@ function weekdayChart(h){
 }
 
 // ============================================================
+// CALENDAR — tap any day to review history or plan ahead
+// ============================================================
+let calOffset = 0;
+function calendarSection(){
+  const base = new Date();
+  const m = new Date(base.getFullYear(), base.getMonth()+calOffset, 1);
+  const monthName = m.toLocaleDateString(undefined,{month:"long", year:"numeric"});
+  const daysInMonth = new Date(m.getFullYear(), m.getMonth()+1, 0).getDate();
+  const todayK = today();
+  let cells = WEEKDAYS.map(w=>`<div style="font-size:11px;font-weight:700;color:var(--text-3);padding:4px 0">${w}</div>`).join("");
+  for (let i=0;i<m.getDay();i++) cells += "<div></div>";
+  for (let d=1; d<=daysInMonth; d++){
+    const date = new Date(m.getFullYear(), m.getMonth(), d);
+    const k = dkey(date);
+    const isToday = k === todayK;
+    const isFuture = k > todayK;
+    let dots = "";
+    if (!isFuture){
+      const s = dayScore(date);
+      if (s !== null){
+        const col = s >= 1 ? "#30d158" : s > 0 ? "var(--accent)" : "#ff453a";
+        dots = `<div class="cal-dots"><div class="cal-dot" style="background:${col}"></div></div>`;
+      } else dots = `<div class="cal-dots"></div>`;
+    } else {
+      const n = S.habits.filter(h=>isDue(h,date)).length;
+      dots = `<div class="cal-dots">${Array(Math.min(3,n)).fill('<div class="cal-dot" style="background:var(--text-3)"></div>').join("")}</div>`;
+    }
+    cells += `<button class="cal-cell ${isToday?"today-cell":""}" data-k="${k}" onclick="openDayModal(this.dataset.k)" aria-label="${monthName} ${d}">${d}${dots}</button>`;
+  }
+  return `<div class="spread" style="margin-bottom:12px">
+    <button class="icon-btn" onclick="calOffset--;render()" aria-label="Previous month" style="font-size:19px">‹</button>
+    <div style="font-weight:800;letter-spacing:-.3px">${monthName}</div>
+    <button class="icon-btn" onclick="calOffset++;render()" aria-label="Next month" style="font-size:19px">›</button>
+  </div>
+  <div class="cal-grid">${cells}</div>
+  <div class="sub" style="font-size:12px;margin-top:12px;text-align:center">Tap any day — review the past, plan the future</div>`;
+}
+function openDayModal(k){
+  const date = fromKey(k);
+  const isFuture = k > today();
+  const dueH = S.habits.filter(h=>isDue(h,date));
+  const offH = isFuture ? S.habits.filter(h=>!isDue(h,date)) : [];
+  const doneN = dueH.filter(h=>isDone(h,k)).length;
+  document.getElementById("modal").innerHTML = `
+  <div class="modal-head">
+    <div>
+      <div class="h2">${date.toLocaleDateString(undefined,{weekday:"long", month:"long", day:"numeric"})}</div>
+      <div class="sub" style="font-size:12.5px;margin-top:3px">${isFuture ? "Plan this day — toggle what's scheduled" : `${doneN}/${dueH.length} completed · tap a habit to edit`}</div>
+    </div>
+    <button class="icon-btn" onclick="closeModal()" aria-label="Close">${I.close}</button>
+  </div>
+  ${dueH.length ? dueH.map(h=>dayRow(h,k,isFuture,true)).join("") :
+    `<div class="empty" style="padding:26px"><div class="big">🌤</div><div class="sub">Nothing scheduled this day</div></div>`}
+  ${offH.length ? `<div class="section-title">Add more to this day</div>${offH.map(h=>dayRow(h,k,isFuture,false)).join("")}` : ""}`;
+  openModal();
+}
+function dayRow(h, k, isFuture, scheduled){
+  if (isFuture){
+    return `<div class="habit-row" style="margin-bottom:8px">
+      <div class="habit-emoji" style="background:${h.color}22">${h.emoji}</div>
+      <div class="habit-info"><div class="habit-name">${esc(h.name)}</div>
+      <div class="habit-meta">${scheduled ? "Scheduled" : "Not scheduled"}</div></div>
+      <label class="switch"><input type="checkbox" ${scheduled?"checked":""} data-h="${h.id}" data-k="${k}" onchange="toggleOverride(this.dataset.h, this.dataset.k, this.checked)"><span class="track"></span></label>
+    </div>`;
+  }
+  const done = isDone(h,k);
+  return `<div class="habit-row ${done?"done":""}" style="margin-bottom:8px" data-h="${h.id}" data-k="${k}" onclick="toggleHistory(this.dataset.h, this.dataset.k)" role="button" tabindex="0">
+    <div class="habit-emoji" style="background:${h.color}22">${h.emoji}</div>
+    <div class="habit-info"><div class="habit-name">${esc(h.name)}</div>
+    <div class="habit-meta">${done ? "✅ Completed" : "Missed"}</div></div>
+    <div class="check-btn ${done?"checked":""}" style="${done?`background:${h.color};border-color:transparent`:""}">${I.check}</div>
+  </div>`;
+}
+function toggleOverride(hid, k, on){
+  const h = S.habits.find(x=>x.id===hid); if (!h) return;
+  S.overrides = S.overrides || {};
+  const day = S.overrides[k] = S.overrides[k] || {};
+  delete day[hid];                       // base schedule with no override
+  const base = isDue(h, fromKey(k));
+  if (on && !base) day[hid] = "add";
+  else if (!on && base) day[hid] = "skip";
+  if (!Object.keys(day).length) delete S.overrides[k];
+  save(); render(); openDayModal(k);
+}
+function toggleHistory(hid, k){
+  const h = S.habits.find(x=>x.id===hid); if (!h) return;
+  const was = isDone(h,k);
+  setValue(h, k, was ? 0 : (h.targetType==="numeric" ? (h.target||1) : 1));
+  if (!was) playSound("check");
+  render(); openDayModal(k);
+}
+
+// ============================================================
 // GOALS VIEW
 // ============================================================
 function viewGoals(){
@@ -1282,7 +1435,19 @@ function renderGoalForm(){
   <div class="modal-head"><div class="h2">${g.id?"Edit Goal":"New Goal"}</div>
     <button class="icon-btn" onclick="closeModal()" aria-label="Close">${I.close}</button></div>
   <div class="field"><label>Goal</label><input type="text" id="g-name" placeholder="e.g. Run a half marathon" value="${esc(g.name)}" maxlength="80" oninput="gform.name=this.value"></div>
-  <div class="field"><label>Icon</label><div class="chip-row">${["🎯","🏃","📖","💰","🎓","🏠","✈️","🏋️","🧗","🎹"].map(e=>`<button class="emoji-opt ${g.emoji===e?"active":""}" onclick="gform.emoji='${e}';renderGoalForm()">${e}</button>`).join("")}</div></div>
+  <div class="field"><label>Icon</label>
+    <div class="chip-row">
+      ${["🎯","🏃","📖","💰","🎓","🏠","✈️","🏋️","🧗","🎹"].includes(g.emoji) ? "" : `<button class="emoji-opt active">${g.emoji}</button>`}
+      ${["🎯","🏃","📖","💰","🎓","🏠","✈️","🏋️","🧗","🎹"].map(e=>`<button class="emoji-opt ${g.emoji===e?"active":""}" onclick="gform.emoji='${e}';renderGoalForm()">${e}</button>`).join("")}
+      <button class="emoji-opt" style="font-size:17px;border:1.5px dashed var(--text-3);background:transparent" onclick="gform._customEmoji=true;renderGoalForm();document.getElementById('custom-emoji')?.focus()" aria-label="Type any emoji">⌨️</button>
+    </div>
+    ${g._customEmoji ? `<div class="row" style="margin-top:10px">
+      <input type="text" id="custom-emoji" placeholder="Tap here, pick any emoji from your keyboard" maxlength="16"
+        style="flex:1;min-width:0;padding:11px 14px;border-radius:12px;background:var(--input-bg);border:1.5px solid var(--accent);outline:none;font-size:20px"
+        oninput="applyCustomEmoji(this.value,'g')">
+      <button class="btn btn-primary" style="padding:11px 16px" onclick="delete gform._customEmoji;renderGoalForm()">Done</button>
+    </div>` : ""}
+  </div>
   <div class="field"><label>Color</label><div class="chip-row">${COLORS.map(c=>`<button class="swatch ${g.color===c?"active":""}" style="background:${c}" onclick="gform.color='${c}';renderGoalForm()"></button>`).join("")}</div></div>
   <div class="field"><label>Deadline (optional)</label><input type="date" value="${g.deadline||""}" onchange="gform.deadline=this.value"></div>
   <div class="field"><label>Milestones</label>
@@ -1299,6 +1464,7 @@ function renderGoalForm(){
 function saveGoal(){
   gform.name = (document.getElementById("g-name")?.value || gform.name || "").trim();
   if (!gform.name){ toast("Give your goal a name"); return; }
+  delete gform._customEmoji;
   gform.milestones = gform.milestones.filter(m=>m.text.trim());
   if (gform.id){ S.goals[S.goals.findIndex(x=>x.id===gform.id)] = gform; toast("Goal updated"); }
   else { gform.id = uid(); gform.createdAt = new Date().toISOString(); S.goals.push(gform); toast("🎯 Goal created"); }
@@ -1599,6 +1765,8 @@ if (!localStorage.getItem(STORE_KEY)){
 // Extra safety: flush state when the app is backgrounded or closed
 addEventListener("pagehide", save);
 document.addEventListener("visibilitychange", ()=>{ if (document.hidden) save(); });
+// First visit: ask for the user's name so everything feels personal
+if (!S.settings.name && !S.settings.askedName) setTimeout(showWelcome, 500);
 </script>
 </body>
 </html>
