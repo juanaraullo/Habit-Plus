@@ -1,6 +1,6 @@
 /* Momentum service worker — offline cache + notification delivery */
-const CACHE = "momentum-v1";
-const ASSETS = ["./", "./index.html", "./manifest.json", "./icon.svg"];
+const CACHE = "momentum-v3";
+const ASSETS = ["./", "./index.html", "./manifest.json", "./icon-512.png", "./apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(
