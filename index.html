@@ -61,7 +61,7 @@
   --overlay: rgba(0,0,0,.55);
 }
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-html { -webkit-text-size-adjust:100%; touch-action:manipulation; overflow-x:hidden; }
+html { -webkit-text-size-adjust:100%; touch-action:manipulation; overflow-x:hidden; background:var(--bg); }
 body {
   font-family: var(--font);
   background: var(--bg);
@@ -142,34 +142,42 @@ main { flex:1; max-width:1060px; margin:0 auto; padding:calc(22px + env(safe-are
 
 /* ---------- Habit rows ---------- */
 .habit-row {
-  display:flex; align-items:center; gap:14px; padding:14px 16px; min-width:0; max-width:100%;
-  background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius-md);
+  display:flex; align-items:center; gap:14px; padding:19px 18px; min-width:0; max-width:100%;
+  background:var(--card); border:1px solid var(--card-border); border-radius:22px;
   backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px);
   transition:transform .25s var(--ease-spring), opacity .3s, box-shadow .3s;
   animation:slideIn .45s var(--ease-out) backwards;
+  position:relative; overflow:hidden;
 }
 .habit-row:active { transform:scale(.985); }
+.habit-fill {
+  position:absolute; inset:0; width:0%; border-radius:inherit; pointer-events:none;
+  transition:width .5s var(--ease-out);
+}
+.habit-row > :not(.habit-fill) { position:relative; z-index:1; }
 .habit-emoji {
-  width:44px; height:44px; border-radius:14px; display:flex; align-items:center; justify-content:center;
-  font-size:22px; flex-shrink:0;
+  width:50px; height:50px; border-radius:16px; display:flex; align-items:center; justify-content:center;
+  font-size:25px; flex-shrink:0;
 }
 .habit-info { flex:1; min-width:0; }
-.habit-name { font-size:16px; font-weight:600; letter-spacing:-.2px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; word-break:break-word; }
-.habit-meta { font-size:12.5px; color:var(--text-2); margin-top:2px; display:flex; gap:2px 8px; align-items:center; flex-wrap:wrap; min-width:0; }
-.habit-row.done .habit-name { text-decoration:line-through; color:var(--text-2); }
-.habit-row.done { opacity:.72; }
+.habit-name { font-size:17px; font-weight:650; letter-spacing:-.3px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; word-break:break-word; }
+.habit-meta { font-size:13px; color:var(--text-2); margin-top:3px; display:flex; gap:2px 8px; align-items:center; flex-wrap:wrap; min-width:0; }
+.habit-row.done .habit-name { text-decoration:line-through; }
+.habit-row.done { opacity:.88; }
 .check-btn {
-  width:34px; height:34px; border-radius:50%; border:2.5px solid var(--track); flex-shrink:0;
+  width:40px; height:40px; border-radius:50%; border:2.5px solid var(--track); flex-shrink:0;
   display:flex; align-items:center; justify-content:center;
+  background:var(--card-solid);
   transition:all .3s var(--ease-spring); position:relative;
 }
 .check-btn svg { width:16px; height:16px; stroke:#fff; stroke-width:3.2; fill:none; stroke-dasharray:24; stroke-dashoffset:24; transition:stroke-dashoffset .35s var(--ease-out) .05s; }
 .check-btn.checked { border-color:transparent; transform:scale(1.05); }
 .check-btn.checked svg { stroke-dashoffset:0; }
-.num-ctrl { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+.num-ctrl { display:flex; align-items:center; gap:8px; flex-shrink:0; }
 .num-ctrl button {
-  width:30px; height:30px; border-radius:50%; background:var(--input-bg); font-size:17px; font-weight:700;
-  display:flex; align-items:center; justify-content:center; transition:transform .2s var(--ease-spring), background .2s;
+  width:38px; height:38px; border-radius:50%; background:var(--card-solid); font-size:19px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-sm);
+  transition:transform .2s var(--ease-spring), background .2s;
 }
 .num-ctrl button:active { transform:scale(.82); }
 .num-val { font-size:13.5px; font-weight:700; min-width:40px; text-align:center; font-variant-numeric:tabular-nums; white-space:nowrap; }
@@ -303,6 +311,22 @@ main { flex:1; max-width:1060px; margin:0 auto; padding:calc(22px + env(safe-are
 .pill { font-size:11px; font-weight:700; padding:3px 9px; border-radius:100px; background:var(--accent-soft); color:var(--accent); }
 .streak-flame { animation:flicker 1.8s ease-in-out infinite; display:inline-block; }
 #confetti-canvas { position:fixed; inset:0; z-index:300; pointer-events:none; }
+#splash {
+  position:fixed; inset:0; z-index:400;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+  background:var(--bg); text-align:center; padding:40px 30px;
+  transition:opacity .55s ease, visibility .55s;
+}
+#splash::before {
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:
+    radial-gradient(500px 380px at 18% 8%, var(--bg-grad-1), transparent 70%),
+    radial-gradient(560px 420px at 88% 90%, var(--bg-grad-2), transparent 70%);
+}
+#splash.hide { opacity:0; visibility:hidden; pointer-events:none; }
+#splash img { width:90px; height:90px; border-radius:24px; box-shadow:0 14px 44px rgba(10,132,255,.28); animation:pop .6s var(--ease-spring); position:relative; }
+#splash-brand { font-size:25px; font-weight:800; letter-spacing:-.6px; position:relative; }
+#splash-msg { font-size:16.5px; color:var(--text-2); font-weight:600; line-height:1.55; max-width:340px; min-height:26px; animation:fadeUp .7s .2s var(--ease-out) backwards; position:relative; }
 .view { animation:fadeUp .4s var(--ease-out); }
 .milestone { display:flex; align-items:center; gap:10px; padding:8px 0; font-size:14.5px; }
 .milestone.done span { text-decoration:line-through; color:var(--text-2); }
@@ -326,6 +350,11 @@ main { flex:1; max-width:1060px; margin:0 auto; padding:calc(22px + env(safe-are
 </style>
 </head>
 <body>
+<div id="splash" aria-hidden="true">
+  <img id="splash-logo" src="icon-512.png" alt="" onerror="this.style.display='none'">
+  <div id="splash-brand">Momentum</div>
+  <div id="splash-msg"></div>
+</div>
 <canvas id="confetti-canvas"></canvas>
 
 <div class="app">
@@ -780,12 +809,20 @@ function cheer(i){
   const idx = (i === undefined ? Math.floor(Date.now()/DAY) : i) % CHEERS.length;
   return CHEERS[idx].replace(/\{n\}/g, n);
 }
-function saveName(){
-  const v = (document.getElementById("name-inp")?.value || "").trim();
-  if (!v){ toast("Type your name first 🙂"); return; }
-  S.settings.name = v; save(); render();
-  toast(`Nice to meet you, ${v}! 💙`);
-  playSound("check");
+// ---------- Quote of the day (tap the ❝ button) ----------
+let quoteIdx = null;
+function openQuote(next){
+  if (quoteIdx === null) quoteIdx = Math.floor(Date.now()/DAY) % QUOTES.length;
+  if (next) quoteIdx = (quoteIdx + 1) % QUOTES.length;
+  const q = QUOTES[quoteIdx];
+  document.getElementById("modal").innerHTML = `
+  <div class="modal-head"><div class="h2">Quote of the Day</div>
+    <button class="icon-btn" onclick="closeModal()" aria-label="Close">${I.close}</button></div>
+  <div style="font-size:46px;line-height:1;color:var(--accent);font-weight:800">❝</div>
+  <div style="font-size:20px;font-weight:700;line-height:1.5;letter-spacing:-.3px;margin:12px 0 14px">${q[0]}</div>
+  <div class="sub" style="margin-bottom:26px">— ${q[1]}</div>
+  <button class="btn btn-ghost btn-block" onclick="openQuote(true)">↻ Another quote</button>`;
+  openModal();
 }
 // ---------- First-open welcome ----------
 function showWelcome(){
@@ -812,44 +849,21 @@ function saveWelcomeName(){
 function viewToday(){
   const now = new Date();
   const due = S.habits.filter(h=>isDue(h,now));
-  const q = QUOTES[Math.floor((+new Date(now.getFullYear(),now.getMonth(),now.getDate())/DAY)) % QUOTES.length];
   return `
   <div class="spread" style="margin-bottom:22px">
-    <div>
+    <div style="min-width:0">
       <div class="sub">${now.toLocaleDateString(undefined,{weekday:"long", month:"long", day:"numeric"})}</div>
       <div class="h1" style="font-size:26px">${headline()}</div>
     </div>
+    <button class="icon-btn" onclick="openQuote()" aria-label="Quote of the day" title="Quote of the day"
+      style="width:44px;height:44px;border-radius:15px;font-size:22px;font-weight:800;color:var(--accent);background:var(--accent-soft)">❝</button>
   </div>
 
   <div class="section-title" style="margin-top:2px">Today's Habits</div>
   ${due.length ? `<div class="grid">${due.map((h,i)=>habitRow(h,i)).join("")}</div>` :
     `<div class="card empty"><div class="big">🌤</div><div style="font-weight:700;font-size:17px;margin-bottom:6px">Nothing due today</div><div class="sub">Tap + to create your first habit</div></div>`}
 
-  ${!S.settings.name ? `
-  <div class="card" style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-    <div style="flex:1;min-width:170px">
-      <div style="font-weight:700">👋 What should I call you?</div>
-      <div class="sub" style="font-size:13px">I'll cheer you on by name.</div>
-    </div>
-    <div class="row" style="flex:1;min-width:210px">
-      <input type="text" id="name-inp" placeholder="Your name" maxlength="30" autocomplete="given-name"
-        style="flex:1;min-width:0;padding:11px 14px;border-radius:12px;background:var(--input-bg);border:1.5px solid transparent;outline:none"
-        onkeydown="if(event.key==='Enter')saveName()">
-      <button class="btn btn-primary" style="padding:11px 18px" onclick="saveName()">Save</button>
-    </div>
-  </div>` : `
-  <div class="card" style="margin-top:14px;background:linear-gradient(135deg,var(--accent-soft),transparent);border-left:4px solid var(--accent)">
-    <div style="font-size:16.5px;font-weight:700;letter-spacing:-.3px;line-height:1.4">${esc(cheer())}</div>
-    <div class="sub" style="font-size:12.5px;margin-top:5px">— Momentum, your biggest fan</div>
-  </div>`}
-
-  ${otherHabitsToday()}
-
-  <div class="section-title">Quote of the Day</div>
-  <div class="card" style="border-left:4px solid var(--accent)">
-    <div style="font-size:16.5px;font-weight:600;line-height:1.5;letter-spacing:-.2px">“${q[0]}”</div>
-    <div class="sub" style="margin-top:10px">— ${q[1]}</div>
-  </div>`;
+  ${otherHabitsToday()}`;
 }
 function otherHabitsToday(){
   const now = new Date();
@@ -863,24 +877,25 @@ function habitRow(h, i, offday=false){
   const done = isDone(h,key);
   const v = valueOn(h,key);
   const streak = habitStreak(h);
-  let control;
+  const tint = `background:${h.color}1f;border-color:${h.color}38;`;
   if (h.targetType === "numeric"){
-    const pctW = Math.min(100, v/(h.target||1)*100);
-    control = `<div class="num-ctrl">
-      <button onclick="bump('${h.id}',-1,event)" aria-label="decrease">−</button>
-      <div class="num-val">${fmtNum(v)}/${fmtNum(h.target)}${h.unit?" "+h.unit:""}</div>
-      <button onclick="bump('${h.id}',1,event)" aria-label="increase">+</button>
-    </div>`;
-    return `<div class="habit-row ${done?"done":""}" style="animation-delay:${i*40}ms">
-      <div class="habit-emoji" style="background:${h.color}22">${h.emoji}</div>
+    const prog = Math.min(1, v/(h.target||1));
+    return `<div class="habit-row ${done?"done":""}" style="animation-delay:${i*40}ms;${tint}">
+      <div class="habit-fill" style="width:${prog*100}%;background:${h.color}59"></div>
+      <div class="habit-emoji" style="background:${h.color}30">${h.emoji}</div>
       <div class="habit-info">
         <div class="habit-name">${esc(h.name)}</div>
-        <div class="habit-meta">${streak>0?`<span>🔥 ${streak}</span>`:""}<span>${h.category||""}</span></div>
-        <div class="mini-bar"><div style="width:${pctW}%;background:${h.color}"></div></div>
-      </div>${control}</div>`;
+        <div class="habit-meta">${streak>0?`<span>🔥 ${streak}</span><span>·</span>`:""}<span>${fmtNum(v)}/${fmtNum(h.target)}${h.unit?" "+h.unit:""}</span></div>
+      </div>
+      <div class="num-ctrl">
+        <button onclick="bump('${h.id}',-1,event)" aria-label="decrease">−</button>
+        <button onclick="bump('${h.id}',1,event)" aria-label="increase">+</button>
+      </div>
+    </div>`;
   }
-  return `<div class="habit-row ${done?"done":""}" style="animation-delay:${i*40}ms" onclick="toggleHabit('${h.id}',event)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')toggleHabit('${h.id}',event)">
-    <div class="habit-emoji" style="background:${h.color}22">${h.emoji}</div>
+  return `<div class="habit-row ${done?"done":""}" style="animation-delay:${i*40}ms;${tint}" onclick="toggleHabit('${h.id}',event)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')toggleHabit('${h.id}',event)">
+    <div class="habit-fill" style="width:${done?100:0}%;background:${h.color}59"></div>
+    <div class="habit-emoji" style="background:${h.color}30">${h.emoji}</div>
     <div class="habit-info">
       <div class="habit-name">${esc(h.name)}</div>
       <div class="habit-meta">${streak>0?`<span>🔥 ${streak}</span>`:""}<span>${freqLabel(h)}</span>${offday?'<span class="pill">off day</span>':""}</div>
@@ -970,8 +985,8 @@ function viewHabits(){
     <div class="grid">${hs.map((h,i)=>{
       const streak = habitStreak(h);
       const rate30 = habitRate(h,30);
-      return `<div class="habit-row" style="animation-delay:${i*40}ms">
-        <div class="habit-emoji" style="background:${h.color}22">${h.emoji}</div>
+      return `<div class="habit-row" style="animation-delay:${i*40}ms;background:${h.color}1f;border-color:${h.color}38">
+        <div class="habit-emoji" style="background:${h.color}30">${h.emoji}</div>
         <div class="habit-info">
           <div class="habit-name">${esc(h.name)}</div>
           <div class="habit-meta"><span>🔥 ${streak}</span><span>·</span><span>${rate30}% last 30d</span><span>·</span><span>${freqLabel(h)}</span></div>
@@ -1331,16 +1346,17 @@ function openDayModal(k){
 }
 function dayRow(h, k, isFuture, scheduled){
   if (isFuture){
-    return `<div class="habit-row" style="margin-bottom:8px">
-      <div class="habit-emoji" style="background:${h.color}22">${h.emoji}</div>
+    return `<div class="habit-row" style="margin-bottom:8px;background:${h.color}1f;border-color:${h.color}38">
+      <div class="habit-emoji" style="background:${h.color}30">${h.emoji}</div>
       <div class="habit-info"><div class="habit-name">${esc(h.name)}</div>
       <div class="habit-meta">${scheduled ? "Scheduled" : "Not scheduled"}</div></div>
       <label class="switch"><input type="checkbox" ${scheduled?"checked":""} data-h="${h.id}" data-k="${k}" onchange="toggleOverride(this.dataset.h, this.dataset.k, this.checked)"><span class="track"></span></label>
     </div>`;
   }
   const done = isDone(h,k);
-  return `<div class="habit-row ${done?"done":""}" style="margin-bottom:8px" data-h="${h.id}" data-k="${k}" onclick="toggleHistory(this.dataset.h, this.dataset.k)" role="button" tabindex="0">
-    <div class="habit-emoji" style="background:${h.color}22">${h.emoji}</div>
+  return `<div class="habit-row ${done?"done":""}" style="margin-bottom:8px;background:${h.color}1f;border-color:${h.color}38" data-h="${h.id}" data-k="${k}" onclick="toggleHistory(this.dataset.h, this.dataset.k)" role="button" tabindex="0">
+    <div class="habit-fill" style="width:${done?100:0}%;background:${h.color}59"></div>
+    <div class="habit-emoji" style="background:${h.color}30">${h.emoji}</div>
     <div class="habit-info"><div class="habit-name">${esc(h.name)}</div>
     <div class="habit-meta">${done ? "✅ Completed" : "Missed"}</div></div>
     <div class="check-btn ${done?"checked":""}" style="${done?`background:${h.color};border-color:transparent`:""}">${I.check}</div>
@@ -1737,6 +1753,18 @@ addEventListener("keydown", e=>{
 document.addEventListener("gesturestart", e=>e.preventDefault());
 document.addEventListener("gesturechange", e=>e.preventDefault());
 
+// iOS standalone can restore with a phantom gap under the tab bar after
+// reopening (stale keyboard/scroll offset). Nudge the viewport back into place.
+function fixViewport(){
+  window.scrollTo(0, 0);
+  const b = document.body;
+  b.style.minHeight = "100.5dvh";           // force a reflow so iOS recomputes
+  requestAnimationFrame(()=>{ b.style.minHeight = ""; });
+}
+addEventListener("pageshow", fixViewport);
+addEventListener("focus", ()=>setTimeout(fixViewport, 60));
+document.addEventListener("visibilitychange", ()=>{ if (!document.hidden) setTimeout(fixViewport, 60); });
+
 // ---------- PWA: service worker (offline cache + notification delivery) ----------
 if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0){
   navigator.serviceWorker.register("sw.js").catch(()=>{});
@@ -1765,8 +1793,37 @@ if (!localStorage.getItem(STORE_KEY)){
 // Extra safety: flush state when the app is backgrounded or closed
 addEventListener("pagehide", save);
 document.addEventListener("visibilitychange", ()=>{ if (document.hidden) save(); });
-// First visit: ask for the user's name so everything feels personal
-if (!S.settings.name && !S.settings.askedName) setTimeout(showWelcome, 500);
+// Personalized splash: greet with real progress from the user's own habits
+function splashMessage(){
+  const n = S.settings.name || "friend";
+  if (!S.habits.length) return `Let's build your first habit, ${n} 🌱`;
+  const now = new Date(), k = today();
+  const due = S.habits.filter(h=>isDue(h,now));
+  const undone = due.filter(h=>!isDone(h,k));
+  if (due.length && !undone.length) return `Everything's done today — enjoy it, ${n} 🎉`;
+  const options = [];
+  for (const h of undone){
+    if (h.targetType === "numeric"){
+      const left = Math.max(0, (h.target||1) - valueOn(h,k));
+      options.push(`${fmtNum(left)}${h.unit ? " " + h.unit : ""} to go on “${h.name}” — you've got this, ${n}`);
+    } else {
+      options.push(`“${h.name}” is waiting for you today, ${n}`);
+    }
+  }
+  const streak = overallStreak();
+  if (streak >= 2) options.push(`Day ${streak + 1} — keep the streak alive, ${n} 🔥`);
+  if (undone.length) options.push(`${undone.length} habit${undone.length > 1 ? "s" : ""} to go today — small steps, ${n}`);
+  return options[Math.floor(Math.random() * options.length)] || `Welcome back, ${n}`;
+}
+(function(){
+  const sp = document.getElementById("splash");
+  if (!sp) return;
+  document.getElementById("splash-msg").textContent = splashMessage();
+  const dur = matchMedia("(prefers-reduced-motion: reduce)").matches ? 400 : 2100;
+  setTimeout(()=>{ sp.classList.add("hide"); setTimeout(()=>sp.remove(), 650); }, dur);
+})();
+// First visit: ask for the user's name so everything feels personal (after the splash)
+if (!S.settings.name && !S.settings.askedName) setTimeout(showWelcome, 2500);
 </script>
 </body>
 </html>
